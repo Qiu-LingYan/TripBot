@@ -19,7 +19,7 @@ import pickle
 import sqlite3
 import hashlib
 import hmac
-import base64
+import base64.
 import urllib.parse
 from datetime import datetime, timedelta
 from collections import deque, namedtuple
@@ -2146,62 +2146,66 @@ class Trainer:
             'losses': [],
             'equity': []
         }
+    	# 修复 train 方法（大约在第2163行附近）
+		def train(self, num_episodes: int = 1000, save_every: int = 100):
+    		"""训练模型"""
+    		logging.info(f"开始训练 {num_episodes} 个 episode")
+    
+    		for episode in range(num_episodes):
+        		# 重置环境
+        		state_dict = self.simulator.reset()  # 返回字典
+        		# 从字典中提取观测值
+        		state = self.simulator._get_observation()  # 获取numpy数组
+        		episode_reward = 0
+        		episode_steps = 0
+        		done = False
         
-    def train(self, num_episodes: int = 1000, save_every: int = 100):
-        """训练模型"""
-        logging.info(f"开始训练 {num_episodes} 个 episode")
+        		while not done:
+            		# 选择动作 - 传入numpy数组
+            		action, log_prob, value = self.agent.select_action(state)
+            
+            		# 执行动作
+            		next_state_dict, reward, done, info = self.simulator.step(action)
+            		# 获取下一个状态的观测值
+            		next_state = self.simulator._get_observation()
+            
+            		# 存储经验
+            		self.agent.store_transition(state, action, reward, next_state, done, value, log_prob)
+            
+            		# 更新
+            		if len(self.agent.buffer) >= self.config.BATCH_SIZE:
+                	loss_info = self.agent.update()
+            
+            		state = next_state
+            		episode_reward += reward
+            		episode_steps += 1
         
-        for episode in range(num_episodes):
-            # 重置环境
-            state = self.simulator.reset()
-            episode_reward = 0
-            episode_steps = 0
-            done = False
-            
-            while not done:
-                # 选择动作
-                action, log_prob, value = self.agent.select_action(state)
-                
-                # 执行动作
-                next_state, reward, done, info = self.simulator.step(action)
-                
-                # 存储经验
-                self.agent.store_transition(state, action, reward, next_state, done, value, log_prob)
-                
-                # 更新
-                if len(self.agent.buffer) >= self.config.BATCH_SIZE:
-                    loss_info = self.agent.update()
-                
-                state = next_state
-                episode_reward += reward
-                episode_steps += 1
-            
-            # 记录
-            self.training_history['episodes'].append(episode)
-            self.training_history['rewards'].append(episode_reward)
-            self.training_history['equity'].append(self.simulator.get_equity())
-            
-            # 日志
-            if episode % 10 == 0:
-                stats = self.simulator.get_stats()
-                logging.info(
-                    f"Episode {episode}/{num_episodes} | "
-                    f"Reward: {episode_reward:.2f} | "
-                    f"Steps: {episode_steps} | "
-                    f"Equity: {stats['final_equity']:.2f} | "
-                    f"Win Rate: {stats['win_rate']:.2%}"
-                )
-            
-            # 保存检查点
-            if episode > 0 and episode % save_every == 0:
-                self.agent.save_checkpoint(episode)
+        		# 记录
+        		self.training_history['episodes'].append(episode)
+        		self.training_history['rewards'].append(episode_reward)
+        		self.training_history['equity'].append(self.simulator.get_equity())
         
-        # 保存最终模型
-        self.agent.save_checkpoint(num_episodes, "models_saved/final_model.pt")
+        		# 日志
+        		if episode % 10 == 0:
+            		stats = self.simulator.get_stats()
+            		logging.info(
+                		f"Episode {episode}/{num_episodes} | "
+                		f"Reward: {episode_reward:.2f} | "
+                		f"Steps: {episode_steps} | "
+                		f"Equity: {stats['final_equity']:.2f} | "
+                		f"Win Rate: {stats['win_rate']:.2%}"
+            		)
         
-        return self.training_history
-
-
+        		# 保存检查点
+        		if episode > 0 and episode % save_every == 0:
+            		self.agent.save_checkpoint(episode)
+    
+    		# 保存最终模型
+    		self.agent.save_checkpoint(num_episodes, "models_saved/final_model.pt")
+    
+    		return self.training_history
+          
+            
 # ==================== 监控面板 ====================
 
 class Dashboard:
