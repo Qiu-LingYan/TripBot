@@ -1,4 +1,4 @@
-(#!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 BTCUSDT 深度强化学习交易系统 - Testnet完整方案
