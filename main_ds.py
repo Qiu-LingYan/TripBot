@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+(#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 BTCUSDT 深度强化学习交易系统 - Testnet完整方案
@@ -1688,29 +1688,35 @@ class TradingSimulator:
         }
         
     def reset(self, initial_balance: float = None):
-        """重置环境"""
-        if initial_balance is not None:
-            self.initial_balance = initial_balance
-        
-        self.balance = self.initial_balance
-        self.position = 0.0
-        self.entry_price = 0.0
-        self.unrealized_pnl = 0.0
-        self.realized_pnl = 0.0
-        self.trades = []
-        self.equity_curve = []
-        self.current_step = 0
-        
-        self.stats = {
-            'total_trades': 0,
-            'winning_trades': 0,
-            'losing_trades': 0,
-            'total_pnl': 0.0,
-            'max_drawdown': 0.0,
-            'peak_equity': self.initial_balance
-        }
-        
-        return self._get_state()
+    	"""重置环境"""
+    	if initial_balance is not None:
+        	self.initial_balance = initial_balance
+    
+    	self.balance = self.initial_balance
+    	self.position = 0.0
+    	self.entry_price = 0.0
+    	self.unrealized_pnl = 0.0
+    	self.realized_pnl = 0.0
+    	self.trades = []
+    	self.equity_curve = []
+    	self.current_step = 0
+    
+    	# 重置风控
+    	self.risk_manager = RiskManager(self.config)
+    
+    	self.stats = {
+        	'total_trades': 0,
+        	'winning_trades': 0,
+        	'losing_trades': 0,
+        	'total_pnl': 0.0,
+        	'max_drawdown': 0.0,
+        	'peak_equity': self.initial_balance,
+        	'final_equity': self.initial_balance,
+        	'win_rate': 0.0,
+        	'avg_pnl': 0.0
+    	}
+    
+    	return self._get_state()  # 返回状态字典
     
     def _get_state(self) -> dict:
         """获取当前状态"""
@@ -1959,40 +1965,40 @@ class TradingSimulator:
         return reward
     
     def _get_observation(self) -> np.ndarray:
-        """获取观测值"""
-        # 这里应该返回特征工程后的数据
-        # 简化版：返回一些基本状态
+    	"""获取观测值 - 返回numpy数组"""
+    	# 这里应该返回特征工程后的数据
+    	# 简化版：返回一些基本状态
         obs = np.array([
-            self.balance / self.initial_balance,  # 归一化余额
-            self.position * self.current_price / self.initial_balance,  # 归一化仓位价值
-            self.unrealized_pnl / self.initial_balance,  # 归一化未实现盈亏
-            self.realized_pnl / self.initial_balance,  # 归一化已实现盈亏
-            self.current_price / 100000,  # 归一化价格
-            self.stats['winning_trades'] / max(1, self.stats['total_trades']),  # 胜率
-            self.stats['max_drawdown'],  # 最大回撤
-            self.risk_manager.consecutive_losses / self.config.MAX_CONSECUTIVE_LOSSES,  # 连续亏损
-        ])
-        
-        # 扩展到256维（简化，实际应该使用特征工程）
-        if len(obs) < self.config.FEATURE_DIM:
-            obs = np.pad(obs, (0, self.config.FEATURE_DIM - len(obs)), 'constant')
-        elif len(obs) > self.config.FEATURE_DIM:
-            obs = obs[:self.config.FEATURE_DIM]
-        
-        return obs
+        	self.balance / self.initial_balance,  # 归一化余额
+        	self.position * self.current_price / self.initial_balance,  # 归一化仓位价值
+        	self.unrealized_pnl / self.initial_balance,  # 归一化未实现盈亏
+        	self.realized_pnl / self.initial_balance,  # 归一化已实现盈亏
+        	self.current_price / 100000,  # 归一化价格
+        	self.stats['winning_trades'] / max(1, self.stats['total_trades']),  # 胜率
+        	self.stats['max_drawdown'],  # 最大回撤
+        	self.risk_manager.consecutive_losses / self.config.MAX_CONSECUTIVE_LOSSES,  # 连续亏损
+    	], dtype=np.float32)  # 指定数据类型为float32
     
-    def get_equity(self) -> float:
-        """获取总权益"""
-        return self.balance + self.position * self.current_price
+    	# 扩展到256维（简化，实际应该使用特征工程）
+    	if len(obs) < self.config.FEATURE_DIM:
+        	obs = np.pad(obs, (0, self.config.FEATURE_DIM - len(obs)), 'constant', constant_values=0)
+    	elif len(obs) > self.config.FEATURE_DIM:
+        	obs = obs[:self.config.FEATURE_DIM]
     
-    def get_stats(self) -> dict:
-        """获取统计信息"""
-        stats = self.stats.copy()
-        stats['win_rate'] = stats['winning_trades'] / max(1, stats['total_trades'])
-        stats['avg_pnl'] = stats['total_pnl'] / max(1, stats['total_trades'])
-        stats['final_equity'] = self.get_equity()
-        stats['total_return'] = (stats['final_equity'] - self.initial_balance) / self.initial_balance
-        return stats
+    	return obs  # 返回numpy数组，不是字典
+    
+    	def get_equity(self) -> float:
+        	"""获取总权益"""
+        	return self.balance + self.position * self.current_price
+    
+    	def get_stats(self) -> dict:
+        	"""获取统计信息"""
+        	stats = self.stats.copy()
+        	stats['win_rate'] = stats['winning_trades'] / max(1, stats['total_trades'])
+        	stats['avg_pnl'] = stats['total_pnl'] / max(1, stats['total_trades'])
+        	stats['final_equity'] = self.get_equity()
+        	stats['total_return'] = (stats['final_equity'] - self.initial_balance) / self.initial_balance
+        	(return stats
 
 
 # ==================== 回测模块 ====================
